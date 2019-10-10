@@ -1274,11 +1274,6 @@ _stop_containers ()
 	docker-compose stop "$@"
 }
 
-_restart_containers ()
-{
-	_stop_containers "$@" && sleep 1 && _start_containers
-}
-
 # @param $1 container_name
 _remove_containers ()
 {
@@ -3020,12 +3015,10 @@ up ()
 # Stop containers
 stop ()
 {
-	# Do not do any checks for "stop all projects" action
-	if [[ $1 == '-a' ]] || [[ $1 == '--all' ]]; then
-		_stop_containers "$@"
-		return $?
-	fi
+	check_docksal_environment
 
+	# No other checks when doing stop
+	# This prevents dead end in rare situations when there are non-unique project names.
 	_stop_containers "$@"
 }
 
@@ -3034,15 +3027,11 @@ stop ()
 restart ()
 {
 	check_docksal_environment
-
-	# Check that project name is unique since non-unique names will give problems with docker-compose
 	check_project_unique
 
-	# Fix project root permissions if necessary
-	set_project_root_permissions
-
-	_restart_containers "$@"
-	unison_sync_wait
+	_stop_containers "$@"
+	# Start containers using up to have all extra routines run
+	up
 }
 
 # Remove container(s)
@@ -3082,11 +3071,8 @@ reset ()
 	local ret=$?
 	[[ "$ret" != 0 ]] && return ${ret}
 
-	# Fix project root permissions if necessary
-	set_project_root_permissions
-
-	_start_containers || return 1
-	unison_sync_wait
+	# Start containers using up to have all extra routines run
+	up
 }
 
 # List project containers
